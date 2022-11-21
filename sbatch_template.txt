@@ -1,0 +1,46 @@
+#!/bin/bash
+
+#SBATCH -J mq{process}
+#SBATCH -A {account}
+#SBATCH -p icelake
+#SBATCH --nodes=1
+#SBATCH --ntasks={cores}
+#SBATCH --time={walltime}:00:00
+#SBATCH --mail-type=NONE
+{dep}
+#SBATCH --parsable
+#SBATCH --chdir={wd}
+
+. /etc/profile.d/modules.sh
+module purge
+module load rhel7/default-ccl
+
+export OMP_NUM_THREADS={cores}
+export I_MPI_PIN_DOMAIN=omp:compact
+export I_MPI_PIN_ORDER=scatter
+
+cd $workdir
+echo -e "Changed directory to `pwd`.\n"
+
+CMD="{mqcmd}"
+
+JOBID=$SLURM_JOB_ID
+
+echo -e "JobID: $JOBID\n======"
+echo "Time: `date`"
+echo "Running on master node: `hostname`"
+echo "Current directory: `pwd`"
+
+if [ "$SLURM_JOB_NODELIST" ]; then
+        #! Create a machine file:
+        export NODEFILE=`generate_pbs_nodefile`
+        cat $NODEFILE | uniq > machine.file.$JOBID
+        echo -e "\nNodes allocated:\n================"
+        echo `cat machine.file.$JOBID | sed -e 's/\..*$//g'`
+fi
+
+echo -e "\nnumtasks=$numtasks, numnodes=$numnodes, mpi_tasks_per_node=$mpi_tasks_per_node (OMP_NUM_THREADS=$OMP_NUM_THREADS)"
+
+echo -e "\nExecuting command:\n==================\n$CMD\n"
+
+eval $CMD
