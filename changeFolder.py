@@ -5,31 +5,37 @@ from lxml import etree
 from xml.sax.saxutils import unescape
 import os
 
-
 parser = argparse.ArgumentParser(description='Set MaxQuant run un sbatch HPC')
-parser.add_argument('template_xml', type=argparse.FileType('r', encoding='UTF-8'))
-parser.add_argument('fasta_folder', type=str)
-parser.add_argument('raw_file_folders', type=str, nargs='+')
-parser.add_argument('-e', '--delete', action='store_true')
-parser.add_argument('-t', '--threads', type=int, required=True)
-parser.add_argument('-x', '--outxml', type=str, required=True)
-parser.add_argument('-o', '--outfolder', type=str, required=True)
+parser.add_argument('template_xml', type=argparse.FileType('r', encoding='UTF-8'),
+                    help='MaxQuant XML parameters template')
+parser.add_argument('fasta', type=str, help='Fasta file or folder with fasta files')
+parser.add_argument('raw_file_folders', type=str, nargs='+', help='Folder(s) with raw files')
+parser.add_argument('-e', '--delete', action='store_true', help='Remove experimental and param groups')
+parser.add_argument('-t', '--threads', type=int, required=True, help='Number of threads')
+parser.add_argument('-o', '--outfolder', type=str, required=True, help='MaxQuant run output folder')
+parser.add_argument('-x', '--outxml', type=str, required=True, help='Output MaxQuant XML parameters file')
 
 args = parser.parse_args()
 
 # Get Fasta file paths
 fasta_paths = []
-fasta_folder = args.fasta_folder
-for f in os.listdir(fasta_folder):
-    if os.path.isfile(os.path.join(fasta_folder, f)) and f.lower().endswith(('.fasta', '.fa', '.fas')):
-        fasta_paths.append(os.path.join(fasta_folder, f))
+fasta = args.fasta_folder
+
+if os.path.isdir(fasta):
+    for f in os.listdir(fasta):
+        if os.path.isfile(os.path.join(fasta, f)) and f.lower().endswith(('.fasta', '.fa', '.fas')):
+            fasta_paths.append(os.path.join(fasta, f))
+elif os.path.isfile(fasta) and fasta.lower().endswith(('.fasta', '.fa', '.fas')):
+    fasta_paths.append(fasta)
+else:
+    raise ValueError('FASTA not valid')
 
 # Get RAW file paths
 raw_paths = []
 for folder in args.raw_file_folders:
     files = [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder, f))]
     # only take raw files
-    files = [f for f in files if f.lower().endswith('.raw')]
+    files = [f for f in files if f.lower().endswith(('.raw', '.RAW', '.mzml', '.mzML'))]
     for file in files:
         raw_paths.append(os.path.join(folder, file))
 
